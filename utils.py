@@ -143,17 +143,17 @@ class Utils:
 					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP )''')
 			
 			cursor.execute('''
-				CREATE TABLE IF NOT EXISTS messsages (
+				CREATE TABLE IF NOT EXISTS messages (
 					id TEXT PRIMARY KEY,
-					creator TEXT,
-					creator_username TEXT,
-				  	recipient TEXT,
-					task_id TEXT,
-				  	link TEXT,
-				  	caption TEXT,
-				  	has_media INTEGER DEFAULT 0,
-				  	admin TEXT,
-					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP )''')
+					admin TEXT,
+					creator_id TEXT,
+					recipient_id TEXT,
+					has_media INTEGER DEFAULT 0,
+					link TEXT,
+					sender_status TEXT,
+					caption TEXT,
+					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				)''')
 			
 			conn.commit()
 			
@@ -606,24 +606,15 @@ class Utils:
 		
 	
 	@staticmethod
-	def add_message(message_id, message_data):
+	def add_message(message_id, admin, creator_id, recipient_id, has_media, link, sender_status, caption):
 		success, msg = False, ''
 		conn = sqlite3.connect(db_file)
 		cursor = conn.cursor()
 		try:
-			creator = message_data['creator']
-			creator_username = message_data['creator_username']
-			recipient = message_data['recipient']
-			task_id = message_data['task_id']
-			schedule_date = message_data['schedule_date']
-			caption = message_data['caption']
-			has_media = message_data.get('has_media', 0)
-			admin = message_data['admin']
-
-			cursor.execute("""INSERT INTO messsages \
-				(id, creator, creator_username, recipient, task_id, schedule_date, caption, has_media, admin) \
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-				(message_id, creator, creator_username, recipient, task_id, schedule_date, caption, has_media, admin))
+			cursor.execute("""INSERT INTO messages \
+				(id, admin, creator_id, recipient_id, has_media, link, sender_status, caption) \
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+				(message_id, admin, creator_id, recipient_id, has_media, link, sender_status, caption))
 			conn.commit()
 			success, msg = True, 'Message added successfully'
 		except Exception as error:
@@ -638,7 +629,7 @@ class Utils:
 		conn = sqlite3.connect(db_file)
 		cursor = conn.cursor()
 		try:
-			cursor.execute('DELETE FROM messsages WHERE id = ?', (message_id,))
+			cursor.execute('DELETE FROM messages WHERE id = ?', (message_id,))
 			conn.commit()
 			success, msg = True, 'Message deleted successfully'
 		except Exception as error:
@@ -648,31 +639,21 @@ class Utils:
 			return success, msg
 
 	@staticmethod
-	def update_message(message_id, message_data):
+	def update_message(message_id, admin, creator_id, recipient_id, has_media, link, sender_status, caption):
 		success, msg = False, ''
 		conn = sqlite3.connect(db_file)
 		cursor = conn.cursor()
 		try:
-			creator = message_data['creator']
-			creator_username = message_data['creator_username']
-			recipient = message_data['recipient']
-			task_id = message_data['task_id']
-			link = message_data['link']
-			caption = message_data['caption']
-			has_media = message_data.get('has_media', 0)
-			admin = message_data['admin']
-
-			cursor.execute('''UPDATE messsages SET
-				creator = ?,
-				creator_username = ?,
-				recipient = ?,
-				task_id = ?,
-				link = ?,
-				caption = ?,
+			cursor.execute('''UPDATE messages SET
+				admin = ?,
+				creator_id = ?,
+				recipient_id = ?,
 				has_media = ?,
-				admin = ?
+				link = ?,
+				sender_status = ?,
+				caption = ?
 				WHERE id = ?''',
-				(creator, creator_username, recipient, task_id, link, caption, has_media, admin, message_id))
+				(admin, creator_id, recipient_id, has_media, link, sender_status, caption, message_id))
 			conn.commit()
 			success, msg = True, 'Message updated successfully'
 		except Exception as error:
@@ -690,50 +671,45 @@ class Utils:
 		try:
 			if multiple:
 				if constraint is not None and keyword is not None:
-					cursor.execute(f"SELECT COUNT(*) FROM posts WHERE {constraint} = ? AND admin = ?", (keyword, admin))
+					cursor.execute(f"SELECT COUNT(*) FROM messages WHERE {constraint} = ? AND admin = ?", (keyword, admin))
 					total_messages = cursor.fetchone()[0]
-					
 					cursor.execute(
-						f"""SELECT * FROM posts 
+						f"""SELECT * FROM messages \
 						WHERE {constraint} = ? AND admin = ?
-						ORDER BY created_at DESC 
+						ORDER BY created_at DESC \
 					LIMIT ? OFFSET ?""", (keyword, admin, limit, offset))
 				else:
-					cursor.execute("SELECT COUNT(*) FROM messsages WHERE admin = ?", (admin,))
+					cursor.execute("SELECT COUNT(*) FROM messages WHERE admin = ?", (admin,))
 					total_messages = cursor.fetchone()[0]
-					cursor.execute("SELECT * FROM messsages WHERE admin = ? ORDER BY created_at DESC LIMIT ? OFFSET ?", (admin, limit, offset))
+					cursor.execute("SELECT * FROM messages WHERE admin = ? ORDER BY created_at DESC LIMIT ? OFFSET ?", (admin, limit, offset))
 
 				rows = cursor.fetchall()
-				# Map the rows to a list of message dictionaries
 				messages = [{
 					'id': row[0],
-					'creator': row[1],
-					'creator_username': row[2],
-					'recipient': row[3],
-					'task_id': row[4],
+					'admin': row[1],
+					'creator_id': row[2],
+					'recipient_id': row[3],
+					'has_media': row[4],
 					'link': row[5],
-					'caption': row[6],
-					'has_media': row[7],
-					'admin': row[8],
-					'created_at': row[9]
+					'sender_status': row[6],
+					'caption': row[7],
+					'created_at': row[8]
 				} for row in rows]
-
 			else:
-				cursor.execute(f"SELECT * FROM messsages WHERE {keyword} = ?", (message_id,))
+				cursor.execute("SELECT * FROM messages WHERE id = ?", (message_id,))
 				row = cursor.fetchone()
 				if row is None:
 					raise Exception('message not found')
 				messages = {
 					'id': row[0],
-					'creator': row[1],
-					'creator_username': row[2],
-					'recipient': row[3],
-					'task_id': row[4],
+					'admin': row[1],
+					'creator_id': row[2],
+					'recipient_id': row[3],
+					'has_media': row[4],
 					'link': row[5],
-					'caption': row[6],
-					'has_media': row[7],
-					'admin': row[8],
-					'created_at': row[9]
+					'sender_status': row[6],
+					'caption': row[7],
+					'created_at': row[8]
 				}
 		except Exception as error:
 			success, messages = False, f'Error getting messages:{error}'

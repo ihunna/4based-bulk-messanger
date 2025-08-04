@@ -24,7 +24,7 @@ class Creator:
 			'sec-fetch-site': 'same-site'
 		}
 
-	def generate_sensor_data(self,type='x-auth-resource'):
+	def generate_sensor_data(self, type='x-auth-resource'):
 		if type == 'x-auth-resource':
 			return ''.join(random.choices(string.ascii_letters.upper() + string.digits + string.ascii_letters, k=len('2NTN5vEez9')))
 
@@ -100,7 +100,7 @@ class Creator:
 
 			creator_name = user['details']['user']['name']
 			email = user['details']['user']['identifier']
-			user_id = user['details']['user']['_id']
+			creator_id = user['details']['user']['_id']
 			captions = config.get('captions',[])
 			caption_source = config.get('caption_source','creator')
 			has_media = config.get('has_media',False)
@@ -119,14 +119,14 @@ class Creator:
 			if not success:raise Exception(user)
 			
 			if caption_source == 'creator':
-				captions = str(random.choice(captions)).replace('\n','')
+				caption = str(random.choice(captions)).replace('\n','')
 
 			else:
 				captions_file = os.path.join(configs_folder,creator['id'],'captions.txt')
 				if not isfile(captions_file):raise Exception(f'Captions file does not exist for {creator_name}')
 				captions = []
 				with open(captions_file,'r',encoding='utf-8') as f:
-					captions = f.readlines()
+					caption = random.choice([line.strip() for line in f.readlines()])
 
 			if (not 'headers' in user.keys() or len(user.get('headers',{})) < 1) or (not 'cookies' in user.keys() or len(user.get('cookies',{})) < 1):
 				return False,f'User {creator_name} does not have session data'
@@ -145,7 +145,7 @@ class Creator:
 			for user in users:
 				# create a chat ID for the user
 				response = session.post(
-				    f'https://rest.4based.com/api/1.0/user/{creator["id"]}/chat/user/{user["_id"]}'
+				    f'https://rest.4based.com/api/1.0/user/{creator_id}/chat/user/{user["_id"]}'
 				)
 
 				if not response.ok and response.status_code != 409:
@@ -161,65 +161,65 @@ class Creator:
 						'vaults_to_file_stack': {
 							'vaults': [
 								{
-									'id': '6831dfb0e623f729d508f863',
-									'guid': '339806c8-af28-85ee-b098-cb08f818b56b',
+									'id': f'{media_id}',
+									'guid': str(uuid.uuid4()),
 									'position': 0,
 								},
 							],
-							'description': 'I will be waiting for you papi.',
-							'price': 0,
+							'description': caption,
+							'price': 0 if not is_paid else price,
 							'status': 'available',
-							'is_subscription_item': False,
+							'is_subscription_item': is_paid,
 							'additional_categories': [
 								'chat_message',
 							],
-							'guid': '716415b8-bb1b-2fe8-0ec8-38e8913cf538',
+							'guid': str(uuid.uuid4()),
 						},
 					}
 
-					# response = requests.post(
-					#     'https://rest.4based.com/api/1.0/user/6682e25e782f928fe201f2f8/file-stack/',
-					#     cookies=cookies,
-					#     headers=headers,
-					#     json=json_data,
-					# )
+					response = session.post(
+					    f'https://rest.4based.com/api/1.0/user/{creator_id}/file-stack/',
+					    json=json_data
+					)
 
+					if not response.ok:
+						raise Exception(f'Error sending media data to {user["name"]} by {creator_name}: {response.text}')
+					if not response.json().get('complete', False):
+						raise Exception(f'Error sending media data to {user["name"]} by {creator_name}: {response.text}')
+					media_id = response.json().get('_id')
 
-			messages = config.get('messages',[])
-			if not messages or len(messages) < 1:return True,'No messages to send'
-
-			for message in messages:
+				# Send message to the user
 				json_data = {
-					'text': message,
-					'locale': 'en',
-					'with_user_pivot_interaction': 'true',
-					'with_user_pivot': 'true',
-					'with_user_pivot_creator': 'true',
-					'with_user_pivot_creator_interaction': 'true',
-					'with_user_pivot_creator_details': 'true',
-					'with_user_pivot_creator_details_interaction': 'true',
-					'with_user_pivot_creator_details_interaction_details': 'true',
-					'with_user_pivot_creator_details_interaction_details_media': 'true',
-					'with_user_pivot_creator_details_interaction_details_media_files': 'true',
-					'with_user_pivot_creator_details_interaction_details_media_files_images': 'true',
-					'with_user_pivot_creator_details_interaction_details_media_files_videos': 'true'
+					'message': caption,
+					'sender_status': 'sent',
+					'local_id': str(uuid.uuid4()),
 				}
+				if has_media and media_id:json_data['file_stack_id'] = media_id
 
 				response = session.post(
-					f'https://rest.4based.com/api/1.0/user/{user_id}/message',
-					headers=self.headers,
-					json=json_data,
-					cookies=creator.get('cookies',{})
+					f'https://rest.4based.com/api/1.0/user/{creator_id}/chat/{message_id}/message',
+					json=json_data
 				)
 
-				if response.status_code == 200:
-					success = True
-					result = response.json()
-				else:
-					result = f'Error sending message: {response.text}'
+				if not response.ok:
+					raise Exception(f'Error sending message to {user["name"]} by {creator_name}: {response.text}')
+				
+				success, msg = Utils.add_message(
+					message_id,
+					admin,
+					creator_id,
+					user['_id'],
+					has_media,
+					f'https://4based.com/chat/{message_id}/conversation',
+					json_data['sender_status'],
+					caption
+				)
 
-			return success,result
+				if not success:
+					raise Exception(f'Error adding message to database for {user["name"]} by {creator_name}: {msg}')
 
+
+			return True, f'Successfully sent messages to {len(users)} users for {creator_name}'
 		except Exception as e:
 			return False,str(e)
 
@@ -495,56 +495,61 @@ class _4BASED:
 
 			Utils.write_log(f'=== Messaging started for {task_id} ===')
 
-			with ThreadPoolExecutor(max_workers=10) as executor:
-				args = [(
-					admin,
-					task_id,
-					creator,
-					config
-					) for creator in creators]
+			while True:
+				success,task_status = Utils.check_task_status(task_id)
+				if not success:raise Exception(task_status)
+				if task_status['status'].lower() in ['cancelled','canceled']:break
 				
-				futures = []
-				for arg in args:
-					success,task_status = Utils.check_task_status(task_id)
-					if not success:raise Exception(task_status)
-					if task_status['status'].lower() in ['cancelled','canceled']:break
-
-					future = executor.submit(Creator().send_messages, *arg)
-					futures.append(future)
-
-				for future in as_completed(futures):
-					success,task_status = Utils.check_task_status(task_id)
-					if not success:raise Exception(task_status)
+				with ThreadPoolExecutor(max_workers=10) as executor:
+					args = [(
+						admin,
+						task_id,
+						creator,
+						config
+						) for creator in creators]
 					
-					if task_status['status'].lower() in ['cancelled','canceled']:
-						for remaining_future in futures:
-							remaining_future.cancel()
-						break
+					futures = []
+					for arg in args:
+						success,task_status = Utils.check_task_status(task_id)
+						if not success:raise Exception(task_status)
+						if task_status['status'].lower() in ['cancelled','canceled']:break
 
-					success,result = future.result()
-					if success:
-						completed += 1
+						future = executor.submit(Creator().send_messages, *arg)
+						futures.append(future)
 
-						client_msg = {'msg':f'{completed} messages sent so far on task:{task_id}','status':'success','type':'message'}
-						success,msg = Utils.update_client(client_msg)
-						if not success:Utils.write_log(msg)
-
-
-					elif not success and result == 'Task canceled':
-						task_status = 'canceled'
-						client_msg = {'msg':f'{result} task:{task_id}','status':'error','type':'message'}
+					for future in as_completed(futures):
+						success,task_status = Utils.check_task_status(task_id)
+						if not success:raise Exception(task_status)
 						
-						success,msg = Utils.update_client(client_msg)
-						if not success:Utils.write_log(msg)
-						break
-					
-					else:
-						fails += 1
-						client_msg = {'msg':f'{fails} creators messaged so far on task:{task_id}','status':'error','type':'message'}
+						if task_status['status'].lower() in ['cancelled','canceled']:
+							for remaining_future in futures:
+								remaining_future.cancel()
+							break
+
+						success,result = future.result()
+						if success:
+							completed += 1
+
+							client_msg = {'msg':f'{completed} messages sent so far on task:{task_id}','status':'success','type':'message'}
+							success,msg = Utils.update_client(client_msg)
+							if not success:Utils.write_log(msg)
+
+
+						elif not success and result == 'Task canceled':
+							task_status = 'canceled'
+							client_msg = {'msg':f'{result} task:{task_id}','status':'error','type':'message'}
+							
+							success,msg = Utils.update_client(client_msg)
+							if not success:Utils.write_log(msg)
+							break
 						
-						success,msg = Utils.update_client(client_msg)
-						if not success:Utils.write_log(msg)
-						task_msg = result
+						else:
+							fails += 1
+							client_msg = {'msg':f'{fails} creators messaged so far on task:{task_id}','status':'error','type':'message'}
+							
+							success,msg = Utils.update_client(client_msg)
+							if not success:Utils.write_log(msg)
+							task_msg = result
 
 		except Exception as error:
 			Utils.write_log(error)
