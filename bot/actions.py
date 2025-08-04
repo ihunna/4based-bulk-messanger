@@ -29,12 +29,15 @@ class Creator:
 			return ''.join(random.choices(string.ascii_letters.upper() + string.digits + string.ascii_letters, k=len('2NTN5vEez9')))
 
 
-	def scrape_users(self,session):
+	def scrape_users(self,session, admin,creator,count=40,offset=0):
 		try:
+			valid_users = []
+			random_letter = random.choice(string.ascii_letters)
+
 			params = {
-				'offset': '0',
-				'limit': '40',
-				'search': 'a',
+				'offset': f'{offset}',
+				'limit': f'{count}',
+				'search': random_letter,
 				'sort': '{"follower_count":"asc"}',
 				# 'verified': 'true',
 				'role': 'client',
@@ -43,16 +46,46 @@ class Creator:
 			response = session.get(
 				'https://rest.4based.com/api/1.0/user', 
 				params=params)
-			
+
 			if response.ok:
 				users = response.json()
+				if isinstance(users, list) and len(users) >= count//2:
+					success, messages, total_messages = Utils.get_messages(
+					admin=admin,
+					limit=100, 
+					offset=0,
+					constraint='creator',
+					keyword=creator)
+					
+					if not success:return False, messages
+					
+					len_messages = len(messages)
+					
+					if len_messages < total_messages:
+						for i in range(total_messages - len_messages):
+							offset = len_messages + i
+							
+							success, msg, total_messages = Utils.get_messages(
+								admin=admin,
+								limit=100,
+								offset=offset,
+								constraint='creator',
+								keyword=creator)
+							
+							if not success: return False, msg
 
-				valid_users = [user for user in users 
-				   if not user.get('creator',False) 
-				   and user.get('cold_communication_status') != 'actively_not_contactable']
-				
-				return True, valid_users
+							messages += msg
 
+					for user in users:
+						if not user.get('creator', False) and user.get('cold_communication_status') != 'actively_not_contactable':
+							# Check if user has already been messaged as a recipient
+							user_messages = [msg for msg in messages if msg.get('recipient', None) == user.get('_id', None)]
+							if not user_messages:
+								valid_users.append(user)
+
+					return True, valid_users
+				else:
+					return False, 'No valid users found'
 			else:
 				return False, f'Error fetching users: {response.text}'
 
@@ -101,21 +134,56 @@ class Creator:
 			session = requests.Session()
 			session.headers.update(user.get('headers'))
 			session.cookies.update(user.get('cookies'))
+			session.proxies = creator.get('proxies',random.choice(self.proxies)) if creator.get('reuse_ip',True) else random.choice(self.proxies)
 
-			success, users = self.scrape_users(session)
+			users,found_users,count = [],0,40
+			while found_users < 1:
+				success, users = self.scrape_users(session, admin, creator, count=count, offset=random.randint(0, 300))
+				if not success:raise Exception(users)
+				found_users += len(users)
 
-			response = session.get(
-				f'https://rest.4based.com/api/1.0/user/name/{user["name"]}',
-				params=params,
-				headers=self.headers,
-				cookies=creator.get('cookies',{})
-			)
+			for user in users:
+				# create a chat ID for the user
+				response = session.post(
+				    f'https://rest.4based.com/api/1.0/user/{creator["id"]}/chat/user/{user["_id"]}'
+				)
 
-			if response.status_code == 200:
-				user['details'] = response.json()
-			
-			else:
-				return False,f'Error fetching user details: {response.text}'
+				if not response.ok and response.status_code != 409:
+					raise Exception(f'User {user["name"]} already has a chat with {creator_name}')
+				elif response.status_code == 409:
+					Utils.write_log(f'User {user["name"]} already has a chat with {creator_name}, skipping...')
+				message_id = response.json().get('_id', None)
+				message_key = response.json().get('user_key', None)
+
+				# Send media data if has_media is True
+				if has_media and media_id:
+					json_data = {
+						'vaults_to_file_stack': {
+							'vaults': [
+								{
+									'id': '6831dfb0e623f729d508f863',
+									'guid': '339806c8-af28-85ee-b098-cb08f818b56b',
+									'position': 0,
+								},
+							],
+							'description': 'I will be waiting for you papi.',
+							'price': 0,
+							'status': 'available',
+							'is_subscription_item': False,
+							'additional_categories': [
+								'chat_message',
+							],
+							'guid': '716415b8-bb1b-2fe8-0ec8-38e8913cf538',
+						},
+					}
+
+					# response = requests.post(
+					#     'https://rest.4based.com/api/1.0/user/6682e25e782f928fe201f2f8/file-stack/',
+					#     cookies=cookies,
+					#     headers=headers,
+					#     json=json_data,
+					# )
+
 
 			messages = config.get('messages',[])
 			if not messages or len(messages) < 1:return True,'No messages to send'

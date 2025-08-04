@@ -657,7 +657,7 @@ class Utils:
 			creator_username = message_data['creator_username']
 			recipient = message_data['recipient']
 			task_id = message_data['task_id']
-			schedule_date = message_data['schedule_date']
+			link = message_data['link']
 			caption = message_data['caption']
 			has_media = message_data.get('has_media', 0)
 			admin = message_data['admin']
@@ -667,12 +667,12 @@ class Utils:
 				creator_username = ?,
 				recipient = ?,
 				task_id = ?,
-				schedule_date = ?,
+				link = ?,
 				caption = ?,
 				has_media = ?,
 				admin = ?
 				WHERE id = ?''',
-				(creator, creator_username, recipient, task_id, schedule_date, caption, has_media, admin, message_id))
+				(creator, creator_username, recipient, task_id, link, caption, has_media, admin, message_id))
 			conn.commit()
 			success, msg = True, 'Message updated successfully'
 		except Exception as error:
@@ -711,7 +711,7 @@ class Utils:
 					'creator_username': row[2],
 					'recipient': row[3],
 					'task_id': row[4],
-					'schedule_date': row[5],
+					'link': row[5],
 					'caption': row[6],
 					'has_media': row[7],
 					'admin': row[8],
@@ -729,7 +729,7 @@ class Utils:
 					'creator_username': row[2],
 					'recipient': row[3],
 					'task_id': row[4],
-					'schedule_date': row[5],
+					'link': row[5],
 					'caption': row[6],
 					'has_media': row[7],
 					'admin': row[8],
