@@ -426,7 +426,8 @@ def handle_messages():
             'selected_creators': data.get('select-creators', []),
             'use_media': True if data.get('use-media', 'false').lower() == 'yes' else False,
             'media_source': data.get('media-id'),
-            'admin': admin
+            'admin': admin,
+            'time_between': int(data.get('time_between', '3600')),
         }
 
         task_id = str(uuid.uuid4()).upper()[:8]

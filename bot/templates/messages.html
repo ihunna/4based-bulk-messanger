@@ -89,6 +89,17 @@
                                 {%endfor%}
                             </select>
                         </div>
+                        <div class="input-container">
+                            <label for="time-between-actions">Time between actions</label>
+                            <select name="time-between-actions" id="time-between-actions" required>
+                                <option value="1800">30 minutes</option>
+                                <option value="3600">1 hour</option>
+                                <option value="7200">2 hours</option>
+                                <option value="10800">3 hours</option>
+                                <option value="21600">6 hours</option>
+                                <option value="86400">24 hours</option>
+                            </select>
+                        </div>
                         <div class="input-container max-workers">
                             <input type="number" id="max-workers" name="max-workers" value="10" max="50" autofocus tocomplete="delay" required>
                             <label for="max-workers">Number of concurrent actions</label>

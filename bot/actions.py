@@ -105,7 +105,7 @@ class Creator:
 			caption_source = config.get('caption_source','creator')
 			has_media = config.get('has_media',False)
 			media_id = config.get('media_id',None)
-			is_paid = config.get('is_paid',False)
+			is_paid = False if config.get('cost_type','free') == 'free' else True
 			price = config.get('price',0)
 
 			success,user = self.login(
@@ -481,6 +481,16 @@ class _4BASED:
 			task_id = task['id']
 			config = task['config']
 			selected_creators = config.get('select-creators',[])
+			
+			time_between = config.get('time_between')
+			time_message = {
+				'1800':'30 minutes',
+				'3600':'1 hour',
+				'7200':'2 hours',
+				'10800':'3 hours',
+				'21600':'6 hours',
+				'86400':'24 hours'
+			}
 
 			success,creators,total_creators = Utils.get_creators(admin=admin,limit=100,selected_creators=selected_creators)
 			if not success:raise Exception(creators)
@@ -499,7 +509,7 @@ class _4BASED:
 				success,task_status = Utils.check_task_status(task_id)
 				if not success:raise Exception(task_status)
 				if task_status['status'].lower() in ['cancelled','canceled']:break
-				
+
 				with ThreadPoolExecutor(max_workers=10) as executor:
 					args = [(
 						admin,
@@ -550,6 +560,12 @@ class _4BASED:
 							success,msg = Utils.update_client(client_msg)
 							if not success:Utils.write_log(msg)
 							task_msg = result
+
+
+				client_msg = {'msg':f'Waiting for {time_message[str(time_between)]} before sending another batch of messages','status':'success','type':'message'}
+				success,msg = Utils.update_client(client_msg)
+				if not success:Utils.write_log(msg)
+				time.sleep(time_between)  # Sleep to avoid rate limiting
 
 		except Exception as error:
 			Utils.write_log(error)
