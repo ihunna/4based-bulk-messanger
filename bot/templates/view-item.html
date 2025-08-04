@@ -19,8 +19,16 @@
                     </div>
                     <ul>
                         <li>
+                            <strong>Status:</strong>
+                            <span>{{item.sender_status}}</span>
+                        </li>
+                        <li>
                             <strong>Creator:</strong>
-                            <span>{{item.creator}}</span>
+                            <span>{{item.creator_name}}</span>
+                        </li>
+                        <li>
+                            <strong>Recipient:</strong>
+                            <span>{{item.recipient_name}}</span>
                         </li>
                         {%if item.caption%}
                             <li>
@@ -31,6 +39,14 @@
                         <li>
                             <strong>Has media:</strong>
                             <span>{{item.has_media}}</span>
+                        </li>
+                        <li>
+                            <strong>Type:</strong>
+                            <span>{{ 'PAID' if item.price > 0 else 'FREE' }}</span>
+                        </li>
+                        <li>
+                            <strong>Price:</strong>
+                            <span>${{item.price}}</span>
                         </li>
                         <li>
                             <strong>Created date:</strong>

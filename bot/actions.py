@@ -29,7 +29,7 @@ class Creator:
 			return ''.join(random.choices(string.ascii_letters.upper() + string.digits + string.ascii_letters, k=len('2NTN5vEez9')))
 
 
-	def scrape_users(self,session, admin,creator,count=40,offset=0):
+	def scrape_users(self,session, admin,creator_id,count=40,offset=0):
 		try:
 			valid_users = []
 			random_letter = random.choice(string.ascii_letters)
@@ -54,8 +54,8 @@ class Creator:
 					admin=admin,
 					limit=100, 
 					offset=0,
-					constraint='creator',
-					keyword=creator)
+					constraint='creator_id',
+					keyword=creator_id)
 					
 					if not success:return False, messages
 					
@@ -69,8 +69,8 @@ class Creator:
 								admin=admin,
 								limit=100,
 								offset=offset,
-								constraint='creator',
-								keyword=creator)
+								constraint='creator_id',
+								keyword=creator_id)
 							
 							if not success: return False, msg
 
@@ -79,7 +79,7 @@ class Creator:
 					for user in users:
 						if not user.get('creator', False) and user.get('cold_communication_status') != 'actively_not_contactable':
 							# Check if user has already been messaged as a recipient
-							user_messages = [msg for msg in messages if msg.get('recipient', None) == user.get('_id', None)]
+							user_messages = [msg for msg in messages if msg.get('recipient_id', None) == user.get('_id', None)]
 							if not user_messages:
 								valid_users.append(user)
 
@@ -90,55 +90,57 @@ class Creator:
 				return False, f'Error fetching users: {response.text}'
 
 		except Exception as e:
-			return False, str(e)
+			return False, f'Error scraping users: {str(e)}'
 
-	def send_messages(self,admin,task_id,creator,config):
+	def send_messages(self,admin,task_id,creator,config,maxworkers=10):
 		try:
 			success,task_status = Utils.check_task_status(task_id)
 			if not success:raise Exception(task_status)
 			if task_status['status'].lower() in ['cancelled','canceled']:return False,  'Task canceled'
 
-			creator_name = user['details']['user']['name']
-			email = user['details']['user']['identifier']
-			creator_id = user['details']['user']['_id']
-			captions = config.get('captions',[])
+			creator_data = creator['data']
+			creator_name = creator_data['details']['user']['name']
+			email = creator_data['details']['user']['identifier']
+			password = creator_data['details']['user']['password']
+			creator_id = creator_data['details']['user']['_id']
+			creator_internal_id = creator['id']
+
+			caption = config.get('caption','')
 			caption_source = config.get('caption_source','creator')
 			has_media = config.get('has_media',False)
+			Utils.write_log(f'=== {config} ===')
+
 			media_id = config.get('media_id',None)
 			is_paid = False if config.get('cost_type','free') == 'free' else True
 			price = config.get('price',0)
 
-			success,user = self.login(
-				admin=admin,
-				email=creator['email'],
-				user_name=creator['data']['details']['user']['name'],
-				password=creator['password'],
+			success,creator = self.login(
+				admin,
+				email,
+				password,
 				reuse_ip=creator.get('reuse_ip',True),
 				task_id=task_id
 			)
-			if not success:raise Exception(user)
-			
-			if caption_source == 'creator':
-				caption = str(random.choice(captions)).replace('\n','')
+			if not success:raise Exception(creator)
 
-			else:
-				captions_file = os.path.join(configs_folder,creator['id'],'captions.txt')
+			if caption_source == 'creator':
+				captions_file = os.path.join(configs_folder,creator_internal_id,'captions.txt')
 				if not isfile(captions_file):raise Exception(f'Captions file does not exist for {creator_name}')
 				captions = []
 				with open(captions_file,'r',encoding='utf-8') as f:
 					caption = random.choice([line.strip() for line in f.readlines()])
 
-			if (not 'headers' in user.keys() or len(user.get('headers',{})) < 1) or (not 'cookies' in user.keys() or len(user.get('cookies',{})) < 1):
+			if (not 'headers' in creator.keys() or len(creator.get('headers',{})) < 1) or (not 'cookies' in creator.keys() or len(creator.get('cookies',{})) < 1):
 				return False,f'User {creator_name} does not have session data'
 			
 			session = requests.Session()
-			session.headers.update(user.get('headers'))
-			session.cookies.update(user.get('cookies'))
+			session.headers.update(creator.get('headers'))
+			session.cookies.update(creator.get('cookies'))
 			session.proxies = creator.get('proxies',random.choice(self.proxies)) if creator.get('reuse_ip',True) else random.choice(self.proxies)
 
-			users,found_users,count = [],0,40
+			users,found_users = [],0
 			while found_users < 1:
-				success, users = self.scrape_users(session, admin, creator, count=count, offset=random.randint(0, 300))
+				success, users = self.scrape_users(session, admin, creator_id, count=maxworkers, offset=random.randint(0, 300))
 				if not success:raise Exception(users)
 				found_users += len(users)
 
@@ -207,21 +209,33 @@ class Creator:
 				success, msg = Utils.add_message(
 					message_id,
 					admin,
-					creator_id,
+					creator_internal_id,
+					creator_name,
 					user['_id'],
+					user['name'],
 					has_media,
 					f'https://4based.com/chat/{message_id}/conversation',
 					json_data['sender_status'],
-					caption
+					caption,
+					price
 				)
 
 				if not success:
 					raise Exception(f'Error adding message to database for {user["name"]} by {creator_name}: {msg}')
+				time.sleep(random.randint(5, 10))  # Sleep to avoid rate limiting
 
+			Utils.write_log(f'=== Successfully sent messages to {len(users)} users for {creator_name} ===')
+			client_msg = {'msg':f'Successfully sent messages to {len(users)} users for {creator_name}','status':'success','type':'message'}
+			success,msg = Utils.update_client(client_msg)
+			if not success:Utils.write_log(msg)
 
 			return True, f'Successfully sent messages to {len(users)} users for {creator_name}'
+		
+		except ValueError as ve:
+			return False, f'Value error while sending messages to users for {creator.get("id")}: {str(ve)}'
+		
 		except Exception as e:
-			return False,str(e)
+			return False,f'Error sending messages to users for {creator.get("id")}: {str(e)}'
 
 	def login(self,admin,email,password,reuse_ip=True,task_id=None,category='creators'):
 		try:
@@ -260,6 +274,8 @@ class Creator:
 				)
 
 				if response.status_code == 200:
+					user['id'] = creator_id
+					user['status'] = 'Online'
 					return True, user
 				
 			json_data = {
@@ -292,7 +308,7 @@ class Creator:
 
 			else:
 				data = response.json()
-				token,auth_resource = data['details']['credentials']['token'],data['details']['credentials']['resource']
+				token,auth_resource = data['credentials']['token'],data['credentials']['resource']
 
 				user['status'] = 'Online'
 				user['details'] = data
@@ -304,7 +320,7 @@ class Creator:
 					'x-auth-token':token
 				})
 
-				user['headers'] = session.headers
+				user['headers'] = dict(session.headers)
 				user['cookies'] = session.cookies.get_dict()
 
 				if avatar is not None:
@@ -473,8 +489,8 @@ class _4BASED:
 			if not success:Utils.write_log(msg)
 
 
-	def start_messaging(self,task):
-		task_status,task_msg,completed,fails = 'failed',f'Started messaging for {task["id"]}',0,0
+	def start_messaging(self,task,maxworkers=10):
+		task_status,task_msg = 'failed',f'Started messaging for {task["id"]}'
 		try:
 
 			admin = task['admin']
@@ -510,12 +526,13 @@ class _4BASED:
 				if not success:raise Exception(task_status)
 				if task_status['status'].lower() in ['cancelled','canceled']:break
 
-				with ThreadPoolExecutor(max_workers=10) as executor:
+				with ThreadPoolExecutor(max_workers=maxworkers) as executor:
 					args = [(
 						admin,
 						task_id,
 						creator,
-						config
+						config,
+						maxworkers
 						) for creator in creators]
 					
 					futures = []
@@ -537,32 +554,12 @@ class _4BASED:
 							break
 
 						success,result = future.result()
-						if success:
-							completed += 1
+						Utils.write_log(f'=== {result}===')
 
-							client_msg = {'msg':f'{completed} messages sent so far on task:{task_id}','status':'success','type':'message'}
-							success,msg = Utils.update_client(client_msg)
-							if not success:Utils.write_log(msg)
-
-
-						elif not success and result == 'Task canceled':
-							task_status = 'canceled'
-							client_msg = {'msg':f'{result} task:{task_id}','status':'error','type':'message'}
-							
-							success,msg = Utils.update_client(client_msg)
-							if not success:Utils.write_log(msg)
-							break
-						
-						else:
-							fails += 1
-							client_msg = {'msg':f'{fails} creators messaged so far on task:{task_id}','status':'error','type':'message'}
-							
-							success,msg = Utils.update_client(client_msg)
-							if not success:Utils.write_log(msg)
-							task_msg = result
-
-
-				client_msg = {'msg':f'Waiting for {time_message[str(time_between)]} before sending another batch of messages','status':'success','type':'message'}
+				wait_massage = f'Waiting for {time_message[str(time_between)]} before sending another batch of messages'
+				Utils.write_log(wait_massage)
+				# Update client with wait message
+				client_msg = {'msg':wait_massage,'status':'success','type':'message'}
 				success,msg = Utils.update_client(client_msg)
 				if not success:Utils.write_log(msg)
 				time.sleep(time_between)  # Sleep to avoid rate limiting
@@ -571,28 +568,7 @@ class _4BASED:
 			Utils.write_log(error)
 			task_status = 'failed'
 			task_msg = f'Error messaging creators on {task_id} : {error}'
-
-		finally:
-			if task_status == 'canceled':
-				client_msg = {'msg':f'{task_id} was canceled','status':'error','type':'message'}
-				task_msg = client_msg['msg']
-
-			elif completed == len(creators) and len(creators) > 0:
-				task_status = 'success'
-				client_msg = {'msg':f'{task_id} successful','status':'success','type':'message'}
-				
-			elif  fails > len(creators) // 2:
-				client_msg = {'msg':f'{task_id} failed','status':'error','type':'message'}
-				task_status = 'failed'
-				task_msg = client_msg['msg']
-			
-			elif task_status == 'failed':
-				client_msg = {'msg':f'{task_id} failed','status':'error','type':'message'}
-			
-			else:
-				task_status = 'completed'
-				client_msg = {'msg':f'{completed} items successful task:{task_id}','status':'success','type':'message'}
-				task_msg = client_msg['msg']
+			client_msg = {'msg':f'Error messaging creators on {task_id} : {error}','status':'error','type':'message'}
 
 			success,msg = Utils.update_client(client_msg)
 			if not success:Utils.write_log(msg)
@@ -601,8 +577,7 @@ class _4BASED:
 				'status':task_status,
 				'message':task_msg
 			})
-			if not success:Utils.write_log(msg)
-			
+
 			task_data = task
 			task_data.update(
 				{'updated':str(datetime.now()),

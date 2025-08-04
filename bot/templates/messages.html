@@ -90,8 +90,8 @@
                             </select>
                         </div>
                         <div class="input-container">
-                            <label for="time-between-actions">Time between actions</label>
                             <select name="time-between-actions" id="time-between-actions" required>
+                                <option value="">Time between actions</option>
                                 <option value="1800">30 minutes</option>
                                 <option value="3600">1 hour</option>
                                 <option value="7200">2 hours</option>
@@ -303,7 +303,9 @@
                             <div class="table-cell badge">Creator</div>
                             <div class="table-cell">Price</div>
                             <div class="table-cell">Has media</div>
-                            <div class="table-cell">Receipient</div>
+                            <div class="table-cell">Type</div>
+                            <div class="table-cell double-cell">Recipient</div>
+                            <div class="table-cell">Status</div>
                             <div class="table-cell double-cell">Date</div>
                             <div class="table-cell actions">Actions</div>
                         </div>
@@ -317,13 +319,15 @@
                                 </div>
                                 <div class="table-cell badge">
                                     <span class="bg-success">
-                                        {{message.creator_username|capitalize}}
+                                        {{message.creator_name|capitalize}}
                                     </span>
                                 </div>                             
                                 <div class="table-cell ">${{ message.price }}</div>
                                 <div class="table-cell ">{{ 'Yes' if message.has_media else 'No' }}</div>
-                                <div class="table-cell ">{{ message.recipient }}</div>
-                                <div class="table-cell double-cell double-cell">{{message.created_at}}</div>
+                                <div class="table-cell ">{{ 'PAID' if message.price > 0 else 'FREE' }}</div>
+                                <div class="table-cell double-cell">{{ message.recipient_name }}</div>
+                                 <div class="table-cell">{{ message.sender_status }}</div>
+                                <div class="table-cell double-cell">{{message.created_at}}</div>
                                 <div class="table-cell actions">
                                     <ul class="actions-list">
                                         <li class="tags">

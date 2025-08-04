@@ -147,11 +147,14 @@ class Utils:
 					id TEXT PRIMARY KEY,
 					admin TEXT,
 					creator_id TEXT,
+					creator_name TEXT,
 					recipient_id TEXT,
+					recipient_name TEXT,
 					has_media INTEGER DEFAULT 0,
 					link TEXT,
 					sender_status TEXT,
 					caption TEXT,
+					price REAL DEFAULT 0,
 					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				)''')
 			
@@ -379,7 +382,7 @@ class Utils:
 					'id': row[0], 
 					'email': row[1],
 					'data': json.loads(row[2]),
-					'created_at': row[4]
+					'created_at': row[6]
 				} for row in rows]
 			elif selected_creators:  # Check if selected_creators is not empty
 				placeholders = ','.join('?' for _ in selected_creators)  # Create placeholders for the IN clause
@@ -402,7 +405,7 @@ class Utils:
 					'id': row[0], 
 					'email': row[1],
 					'data': json.loads(row[2]),
-					'created_at': row[4]
+					'created_at': row[6]
 				} for row in rows]
 			else:
 				# Fallback to the original logic if no selected_creators
@@ -424,7 +427,7 @@ class Utils:
 						'id': row[0], 
 						'email': row[1],
 						'data': json.loads(row[2]),
-						'created_at': row[4]
+						'created_at': row[6]
 					} for row in rows]
 				else:
 					cursor.execute("SELECT * FROM creators WHERE id = ?", (creator,))
@@ -434,7 +437,7 @@ class Utils:
 						'id': row[0], 
 						'email': row[1],
 						'data': json.loads(row[2]),
-						'created_at': row[4]
+						'created_at': row[6]
 					} if row is not None else {}
 
 			success = True
@@ -455,12 +458,11 @@ class Utils:
 		try:
 			cursor.execute("SELECT * FROM creators WHERE email = ? AND admin = ?", (creator_email,admin))
 			row = cursor.fetchone()
-			print(row)
 			creator = {
 				'id': row[0], 
 				'email':row[1],
 				'data': json.loads(row[2]),
-				'created_at': row[4]
+				'created_at': row[6]
 			} if row is not None else {}
 			success = True
 
@@ -606,15 +608,15 @@ class Utils:
 		
 	
 	@staticmethod
-	def add_message(message_id, admin, creator_id, recipient_id, has_media, link, sender_status, caption):
+	def add_message(message_id, admin, creator_id, creator_name, recipient_id, recipient_name, has_media, link, sender_status, caption, price):
 		success, msg = False, ''
 		conn = sqlite3.connect(db_file)
 		cursor = conn.cursor()
 		try:
 			cursor.execute("""INSERT INTO messages \
-				(id, admin, creator_id, recipient_id, has_media, link, sender_status, caption) \
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-				(message_id, admin, creator_id, recipient_id, has_media, link, sender_status, caption))
+				(id, admin, creator_id, creator_name, recipient_id, recipient_name, has_media, link, sender_status, caption, price) \
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+				(message_id, admin, creator_id, creator_name, recipient_id, recipient_name, has_media, link, sender_status, caption, price))
 			conn.commit()
 			success, msg = True, 'Message added successfully'
 		except Exception as error:
@@ -639,7 +641,7 @@ class Utils:
 			return success, msg
 
 	@staticmethod
-	def update_message(message_id, admin, creator_id, recipient_id, has_media, link, sender_status, caption):
+	def update_message(message_id, admin, creator_id, creator_name, recipient_id, recipient_name, has_media, link, sender_status, caption, price):
 		success, msg = False, ''
 		conn = sqlite3.connect(db_file)
 		cursor = conn.cursor()
@@ -647,13 +649,16 @@ class Utils:
 			cursor.execute('''UPDATE messages SET
 				admin = ?,
 				creator_id = ?,
+				creator_name = ?,
 				recipient_id = ?,
+				recipient_name = ?,
 				has_media = ?,
 				link = ?,
 				sender_status = ?,
-				caption = ?
+				caption = ?,
+				price = ?
 				WHERE id = ?''',
-				(admin, creator_id, recipient_id, has_media, link, sender_status, caption, message_id))
+				(admin, creator_id, creator_name, recipient_id, recipient_name, has_media, link, sender_status, caption, price, message_id))
 			conn.commit()
 			success, msg = True, 'Message updated successfully'
 		except Exception as error:
@@ -688,12 +693,15 @@ class Utils:
 					'id': row[0],
 					'admin': row[1],
 					'creator_id': row[2],
-					'recipient_id': row[3],
-					'has_media': row[4],
-					'link': row[5],
-					'sender_status': row[6],
-					'caption': row[7],
-					'created_at': row[8]
+					'creator_name': row[3],
+					'recipient_id': row[4],
+					'recipient_name': row[5],
+					'has_media': row[6],
+					'link': row[7],
+					'sender_status': row[8],
+					'caption': row[9],
+					'price': row[10],
+					'created_at': row[11]
 				} for row in rows]
 			else:
 				cursor.execute("SELECT * FROM messages WHERE id = ?", (message_id,))
@@ -704,12 +712,15 @@ class Utils:
 					'id': row[0],
 					'admin': row[1],
 					'creator_id': row[2],
-					'recipient_id': row[3],
-					'has_media': row[4],
-					'link': row[5],
-					'sender_status': row[6],
-					'caption': row[7],
-					'created_at': row[8]
+					'creator_name': row[3],
+					'recipient_id': row[4],
+					'recipient_name': row[5],
+					'has_media': row[6],
+					'link': row[7],
+					'sender_status': row[8],
+					'caption': row[9],
+					'price': row[10],
+					'created_at': row[11]
 				}
 		except Exception as error:
 			success, messages = False, f'Error getting messages:{error}'

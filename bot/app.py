@@ -424,10 +424,10 @@ def handle_messages():
             'creators_source': data.get('creators-source'),
             'cost_type': data.get('message-cost-type', 'free'),
             'selected_creators': data.get('select-creators', []),
-            'use_media': True if data.get('use-media', 'false').lower() == 'yes' else False,
-            'media_source': data.get('media-id'),
+            'has_media': True if data.get('use-media', 'false').lower() == 'yes' else False,
+            'media_id': data.get('media-id'),
             'admin': admin,
-            'time_between': int(data.get('time_between', '3600')),
+            'time_between': int(data.get('time-between-actions', '3600'))
         }
 
         task_id = str(uuid.uuid4()).upper()[:8]
@@ -443,10 +443,16 @@ def handle_messages():
         success, msg = Utils.add_task(task_id, task_data)
         if not success:raise Exception(msg)
 
-        task = Thread(target=_4BASED().start_messaging, args=(task_data,))
+        task = Thread(target=_4BASED().start_messaging, args=(task_data,int(data.get('max-workers', 10))))
         task.start()
             
         if task.is_alive():
+            success,msg = Utils.update_task(task_id,{
+                'status':'running',
+                'message':'Started sending messages'
+            })
+            if not success:Utils.write_log(msg)
+            
             success,msg = Utils.update_client({'msg':f'{task_id} successfully created','status':'success','type':'message'})
             if not success:Utils.write_log(msg)
             
