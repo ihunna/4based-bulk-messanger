@@ -92,6 +92,12 @@
                         <div class="input-container">
                             <select name="time-between-actions" id="time-between-actions" required>
                                 <option value="">Time between actions</option>
+                                <option value="60">1 minute</option>
+                                <option value="120">2 minutes</option>
+                                <option value="180">2 minutes</option>
+                                <option value="300">5 minutes</option>
+                                <option value="600">10 minutes</option>
+                                <option value="1200">20 minutes</option>
                                 <option value="1800">30 minutes</option>
                                 <option value="3600">1 hour</option>
                                 <option value="7200">2 hours</option>
@@ -159,10 +165,10 @@
                                 <label for="use-media-no">No</label>
                             </div>
                         </div>
-                        <div class="input-container" id="media-id-container" style="display: none;">
+                        <!-- <div class="input-container" id="media-id-container" style="display: none;">
                             <input type="text" id="media-id" name="media-id" placeholder="Enter 4based media ID">
                             <label for="media-id">Media ID</label>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="input-container flex">
                         <input type="submit" value="Submit">
@@ -206,28 +212,28 @@
                     }
                 }
                 // Media radio toggle logic
-                const useMediaRadios = document.querySelectorAll('input.use-media[type="radio"]');
-                const mediaIdContainer = document.getElementById('media-id-container');
-                useMediaRadios.forEach(radio => {
-                    radio.addEventListener('change', function () {
-                        if (this.value === 'yes') {
-                            mediaIdContainer.style.display = '';
-                            mediaIdContainer.querySelector('input').setAttribute('required', 'required');
-                        } else {
-                            mediaIdContainer.style.display = 'none';
-                            mediaIdContainer.querySelector('input').removeAttribute('required');
-                        }
-                    });
-                });
+                // const useMediaRadios = document.querySelectorAll('input.use-media[type="radio"]');
+                // const mediaIdContainer = document.getElementById('media-id-container');
+                // useMediaRadios.forEach(radio => {
+                //     radio.addEventListener('change', function () {
+                //         if (this.value === 'yes') {
+                //             mediaIdContainer.style.display = '';
+                //             mediaIdContainer.querySelector('input').setAttribute('required', 'required');
+                //         } else {
+                //             mediaIdContainer.style.display = 'none';
+                //             mediaIdContainer.querySelector('input').removeAttribute('required');
+                //         }
+                //     });
+                // });
                 // Set initial state for media id input
-                const checkedMediaRadio = document.querySelector('input.use-media[type="radio"]:checked');
-                if (checkedMediaRadio && checkedMediaRadio.value === 'yes') {
-                    mediaIdContainer.style.display = '';
-                    mediaIdContainer.querySelector('input').setAttribute('required', 'required');
-                } else {
-                    mediaIdContainer.style.display = 'none';
-                    mediaIdContainer.querySelector('input').removeAttribute('required');
-                }
+                // const checkedMediaRadio = document.querySelector('input.use-media[type="radio"]:checked');
+                // if (checkedMediaRadio && checkedMediaRadio.value === 'yes') {
+                //     mediaIdContainer.style.display = '';
+                //     mediaIdContainer.querySelector('input').setAttribute('required', 'required');
+                // } else {
+                //     mediaIdContainer.style.display = 'none';
+                //     mediaIdContainer.querySelector('input').removeAttribute('required');
+                // }
             });
 
             function updateRadioButtons(messageHolder) {
@@ -325,8 +331,8 @@
                                 <div class="table-cell ">${{ message.price }}</div>
                                 <div class="table-cell ">{{ 'Yes' if message.has_media else 'No' }}</div>
                                 <div class="table-cell ">{{ 'PAID' if message.price > 0 else 'FREE' }}</div>
-                                <div class="table-cell double-cell">{{ message.recipient_name }}</div>
-                                 <div class="table-cell">{{ message.sender_status }}</div>
+                                <div class="table-cell double-cell">@{{ message.recipient_name }}</div>
+                                 <div class="table-cell">{{ message.sender_status | upper }}</div>
                                 <div class="table-cell double-cell">{{message.created_at}}</div>
                                 <div class="table-cell actions">
                                     <ul class="actions-list">

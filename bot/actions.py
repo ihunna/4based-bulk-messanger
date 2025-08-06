@@ -28,9 +28,86 @@ class Creator:
 		if type == 'x-auth-resource':
 			return ''.join(random.choices(string.ascii_letters.upper() + string.digits + string.ascii_letters, k=len('2NTN5vEez9')))
 
-
-	def scrape_users(self,session, admin,creator_id,count=40,offset=0):
+	def update_media_id(self, post_id, creator):
 		try:
+			creator_id = creator.get('id', None)
+
+			# Get post ID
+			self.headers.update({
+				'user-agent': Utils.generate_user_agent('android',1),
+			})
+
+			params = {
+				'with_first_three_comments': 'true',
+				'with_source': 'true',
+			}
+
+			response = requests.get(
+				f'https://rest.4based.com/api/1.0/file-stack/{post_id}',
+				params=params,
+				headers=self.headers,
+				proxies=random.choice(self.proxies)
+			)
+			if not response.ok:
+				raise Exception(f'Error fetching media ID for {post_id}: {response.text}')
+
+			media_id = response.json().get('vault_file_stack_id', None)
+			if not media_id or media_id is None:
+				raise Exception(f'No media ID found for {post_id}')
+			
+			success, msg = self.update(creator, {'media_id': media_id,'post_id':post_id})
+			if not success:
+				raise Exception(f'Error updating creator {creator_id} with media ID {media_id}: {msg}')
+
+			return True, f'Successfully saved media ID {media_id} for creator {creator_id}'
+		except Exception as e:
+			return False, f'Error saving media ID {media_id} for creator {creator_id}: {str(e)}'
+
+	def upload_media(self, session, creator_id, media_id, creator_name, user_name,  caption, is_paid=False, price=0):
+		try:
+			# Send media data
+			json_data = {
+				'vaults_to_file_stack': {
+					'vaults': [
+						{
+							'id': f'{media_id}',
+							'guid': str(uuid.uuid4()),
+							'position': 0,
+						},
+					],
+					'description': caption,
+					'price': 0 if not is_paid else price,
+					'status': 'available',
+					'is_subscription_item': is_paid,
+					'additional_categories': [
+						'chat_message',
+					],
+					'guid': str(uuid.uuid4()),
+				},
+			}
+
+			response = session.post(
+				f'https://rest.4based.com/api/1.0/user/{creator_id}/file-stack/',
+				json=json_data
+			)
+
+			if not response.ok:
+				raise Exception(f'Error sending media data to {user_name} by {creator_name}: {response.text}')
+			if not response.json().get('complete', False):
+				raise Exception(f'Error sending media data to {user_name} by {creator_name}: {response.text}')
+			media_id = response.json().get('_id')
+
+			return True, media_id
+		except Exception as e:
+			return False, f'Error saving media for creator {creator_id}: {str(e)}'
+
+	def scrape_users(self,scraper, admin,creator_id,count=40,offset=0):
+		try:
+			session = requests.Session()
+			session.headers.update(scraper.get('headers'))
+			session.cookies.update(scraper.get('cookies'))
+			session.proxies = scraper.get('proxies',random.choice(self.proxies)) if scraper.get('reuse_ip',True) else random.choice(self.proxies)
+			
 			valid_users = []
 			random_letter = random.choice(string.ascii_letters)
 
@@ -92,8 +169,9 @@ class Creator:
 		except Exception as e:
 			return False, f'Error scraping users: {str(e)}'
 
-	def send_messages(self,admin,task_id,creator,config,maxworkers=10):
+	def send_messages(self,admin,task_id,creator,scrapers,config,maxworkers):
 		try:
+			
 			success,task_status = Utils.check_task_status(task_id)
 			if not success:raise Exception(task_status)
 			if task_status['status'].lower() in ['cancelled','canceled']:return False,  'Task canceled'
@@ -108,9 +186,9 @@ class Creator:
 			caption = config.get('caption','')
 			caption_source = config.get('caption_source','creator')
 			has_media = config.get('has_media',False)
+			media_id = creator_data.get('media_id',None)
 			Utils.write_log(f'=== {config} ===')
 
-			media_id = config.get('media_id',None)
 			is_paid = False if config.get('cost_type','free') == 'free' else True
 			price = config.get('price',0)
 
@@ -122,6 +200,17 @@ class Creator:
 				task_id=task_id
 			)
 			if not success:raise Exception(creator)
+
+
+			target_scraper = random.choice(scrapers)
+			success,scraper = self.login(
+				admin,
+				target_scraper['email'],
+				target_scraper['data']['details']['user']['password'],
+				reuse_ip=target_scraper.get('reuse_ip',True),
+				task_id=task_id
+			)
+			if not success:raise Exception(scraper)
 
 			if caption_source == 'creator':
 				captions_file = os.path.join(configs_folder,creator_internal_id,'captions.txt')
@@ -140,7 +229,7 @@ class Creator:
 
 			users,found_users = [],0
 			while found_users < 1:
-				success, users = self.scrape_users(session, admin, creator_id, count=maxworkers, offset=random.randint(0, 300))
+				success, users = self.scrape_users(scraper, admin, creator_id, count=maxworkers, offset=random.randint(0, 300))
 				if not success:raise Exception(users)
 				found_users += len(users)
 
@@ -157,38 +246,19 @@ class Creator:
 				message_id = response.json().get('_id', None)
 				message_key = response.json().get('user_key', None)
 
-				# Send media data if has_media is True
+				# If media is to be sent, save it and get the media ID
 				if has_media and media_id:
-					json_data = {
-						'vaults_to_file_stack': {
-							'vaults': [
-								{
-									'id': f'{media_id}',
-									'guid': str(uuid.uuid4()),
-									'position': 0,
-								},
-							],
-							'description': caption,
-							'price': 0 if not is_paid else price,
-							'status': 'available',
-							'is_subscription_item': is_paid,
-							'additional_categories': [
-								'chat_message',
-							],
-							'guid': str(uuid.uuid4()),
-						},
-					}
-
-					response = session.post(
-					    f'https://rest.4based.com/api/1.0/user/{creator_id}/file-stack/',
-					    json=json_data
+					success, media_id = self.upload_media(
+						session,
+						creator_id,
+						media_id,
+						creator_name,
+						user['name'],
+						caption,
+						is_paid=is_paid,
+						price=price
 					)
-
-					if not response.ok:
-						raise Exception(f'Error sending media data to {user["name"]} by {creator_name}: {response.text}')
-					if not response.json().get('complete', False):
-						raise Exception(f'Error sending media data to {user["name"]} by {creator_name}: {response.text}')
-					media_id = response.json().get('_id')
+					if not success:raise Exception(media_id)
 
 				# Send message to the user
 				json_data = {
@@ -222,14 +292,20 @@ class Creator:
 
 				if not success:
 					raise Exception(f'Error adding message to database for {user["name"]} by {creator_name}: {msg}')
+
+				Utils.write_log(f'=== Successfully sent a message to {user["name"]} by {creator_name} ===')
+				client_msg = {'msg':f'Successfully sent a message to {user["name"]} by {creator_name}','status':'success','type':'message'}
+				success,msg = Utils.update_client(client_msg)
+				if not success:Utils.write_log(msg)
+
 				time.sleep(random.randint(5, 10))  # Sleep to avoid rate limiting
 
-			Utils.write_log(f'=== Successfully sent messages to {len(users)} users for {creator_name} ===')
-			client_msg = {'msg':f'Successfully sent messages to {len(users)} users for {creator_name}','status':'success','type':'message'}
+			Utils.write_log(f'=== Successfully sent messages to {len(users)} users by {creator_name} ===')
+			client_msg = {'msg':f'Successfully sent messages to {len(users)} users by {creator_name}','status':'success','type':'message'}
 			success,msg = Utils.update_client(client_msg)
 			if not success:Utils.write_log(msg)
 
-			return True, f'Successfully sent messages to {len(users)} users for {creator_name}'
+			return True, f'Successfully sent messages to {len(users)} users by {creator_name}'
 		
 		except ValueError as ve:
 			return False, f'Value error while sending messages to users for {creator.get("id")}: {str(ve)}'
@@ -500,6 +576,12 @@ class _4BASED:
 			
 			time_between = config.get('time_between')
 			time_message = {
+				'60':'1 minute',
+				'120':'2 minutes',
+				'180':'3 minutes',
+				'300':'5 minutes',
+				'600':'10 minutes',
+				'1200':'20 minutes',
 				'1800':'30 minutes',
 				'3600':'1 hour',
 				'7200':'2 hours',
@@ -519,6 +601,18 @@ class _4BASED:
 					if not success:raise Exception(msg)
 					creators += msg
 
+
+			success,scrapers,total_scrapers = Utils.get_creators(admin=admin,limit=100,category='users')
+			if not success:raise Exception(scrapers)
+			
+			len_scrapers = len(scrapers)
+			if len_scrapers < total_scrapers:
+				for i in range(total_scrapers - len_scrapers):
+					offset = len_scrapers + i
+					success,msg,total_scrapers = Utils.get_creators(admin=admin,limit=100,offset=offset,category='users')
+					if not success:raise Exception(msg)
+					creators += msg
+
 			Utils.write_log(f'=== Messaging started for {task_id} ===')
 
 			while True:
@@ -531,6 +625,7 @@ class _4BASED:
 						admin,
 						task_id,
 						creator,
+						scrapers,
 						config,
 						maxworkers
 						) for creator in creators]
@@ -554,6 +649,12 @@ class _4BASED:
 							break
 
 						success,result = future.result()
+						if not success:
+							client_msg = {'msg':f'Error messaging creators on {task_id} : {result}','status':'error','type':'message'}
+
+							success,msg = Utils.update_client(client_msg)
+							if not success:Utils.write_log(msg)
+
 						Utils.write_log(f'=== {result}===')
 
 				wait_massage = f'Waiting for {time_message[str(time_between)]} before sending another batch of messages'

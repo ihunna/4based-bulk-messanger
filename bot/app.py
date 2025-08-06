@@ -170,8 +170,10 @@ def creators():
                 admin=admin,
                 limit=per_page, 
                 offset=offset,
-                category=category)
-            
+                category=category,
+                constraint=constraint,
+                keyword=item)
+
             next_page = page + 1 if page  < total_creators / per_page else page
             prev_page = page - 1 if page  > 1 else page
             current_page = offset + len(creators)
@@ -286,32 +288,45 @@ def creator():
             return render_template(
                 'creator.html',
                 creator_id = creator_id,
+                post_id = creator['post_id'],
                 creator=creator['details']['user'],
                 reuse_ip=reuse_ip)
         
         elif request.method == 'POST':
             data = request.get_json()
+            category = data.get('category','creators')
             action = data['action']
-            status = data['status']
-            key = data['key']
             creator = data['creator'] if category == 'creators' else data['user']
 
             success, creator, _ = Utils.get_creators(multiple=False,creator=creator)
             if not success:raise Exception(creator)
             elif len(creator) < 1:return jsonify({'msg':'No such creator'}),404
 
-            if key == 'reuse_ip' and status in ['yes','Yes','YES']:status = True 
-            elif key == 'reuse_ip' and status in ['no','No','NO']: status = False
+            if action == 'edit-ip-status':
+                key = data['key']
+                status = data['status']
 
-            data = {key:status}
+                if key == 'reuse_ip' and status in ['yes','Yes','YES']:status = True 
+                elif key == 'reuse_ip' and status in ['no','No','NO']: status = False
 
-            if action == 'edit':
+                data = {key:status}
+
                 success,msg = Creator().update(creator,data)
                 if not success:
                     Utils.write_log(msg)
                     return jsonify({'msg':'Error updating user'}), 400
                 else:
-                    return jsonify({'msg':'user udated successfully'}),200
+                    return jsonify({'msg':'user updated successfully'}),200
+            
+            elif action == 'update-media-id':
+                post_id = data['post_id']
+
+                success,msg = Creator().update_media_id(post_id,creator)
+                if not success:
+                    Utils.write_log(msg)
+                    return jsonify({'msg':'Error updating user media id'}), 400
+                else:
+                    return jsonify({'msg':'user media id updated successfully'}),200
                 
             return jsonify({'msg':'action not specified'}),400
 
@@ -416,6 +431,17 @@ def messages():
 def handle_messages():
     try:
         admin = session['USER']['id']
+
+        #check for already running task
+        success, tasks,_ = Utils.get_tasks(admin=admin, constraint='type', keyword='messages')
+        if not success:raise Exception(tasks)
+        running_task = tasks[0] if len(tasks) > 0 else {'status':None}
+
+        if running_task['status'] in ['running','pending']:
+            success,msg = Utils.update_client({'msg':f'Please wait for the current message task to finish or stop it before creating another','status':'error','type':'message'})
+            if not success:Utils.write_log(msg)
+            return jsonify({'msg': 'A messaging task is already running. Please wait until it finishes.'}), 400
+
         data = request.get_json()
         message_data = {
             'price': data.get('message-price'),
@@ -436,7 +462,7 @@ def handle_messages():
             'admin': admin,
             'status': 'pending',
             'action_count': data.get('action-count', 1),
-            'type': 'posts',
+            'type': 'messages',
             'message': f'Creating task on {admin}',
             'config': message_data
         }
@@ -781,7 +807,7 @@ def delete(category):
                 task_status = task.get('status')
                 
                 if task_status.lower() in ['running','pending']:
-                    success,msg = Utils.update_client({'msg':f"Cannot delete {task_id} while it's still running",'status':'success','type':'message'})
+                    success,msg = Utils.update_client({'msg':f"Cannot delete {task_id} while it's still running",'status':'error','type':'message'})
                     continue
                 
                 success,msg = Utils.delete_task(task_id)

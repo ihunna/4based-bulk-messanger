@@ -407,6 +407,26 @@ class Utils:
 					'data': json.loads(row[2]),
 					'created_at': row[6]
 				} for row in rows]
+			elif constraint is not None and keyword is not None:
+				# If constraint and keyword are provided, filter by them
+				cursor.execute(f"SELECT COUNT(*) FROM creators WHERE {constraint} = ? AND admin = ?", (keyword, admin))
+				total_creators = cursor.fetchone()[0]
+
+				cursor.execute(
+					f"""SELECT * FROM creators 
+					WHERE {constraint} = ? AND admin = ?
+					ORDER BY created_at DESC 
+					LIMIT ? OFFSET ?""",
+					(keyword, admin, limit, offset)
+				)
+				rows = cursor.fetchall()
+
+				creators = [{
+					'id': row[0], 
+					'email': row[1],
+					'data': json.loads(row[2]),
+					'created_at': row[6]
+				} for row in rows]
 			else:
 				# Fallback to the original logic if no selected_creators
 
@@ -577,27 +597,51 @@ class Utils:
 		return Utils.get_task(task_id)
 	
 	@staticmethod
-	def get_tasks(admin='', limit=20, offset=0):
+	def get_tasks(admin='', limit=20, offset=0, constraint=None, keyword=None):
 		success, tasks, total_tasks = True, [], 0
 		conn = sqlite3.connect(db_file)
 		cursor = conn.cursor()
 		try:
+			if constraint is not None and keyword is not None:
+				cursor.execute(f"SELECT COUNT(*) FROM tasks WHERE {constraint} = ? AND admin = ?", (keyword, admin))
+				total_tasks = cursor.fetchone()[0]
 
-			cursor.execute("SELECT COUNT(*) FROM tasks WHERE admin = ?", (admin,))
-			total_tasks = cursor.fetchone()[0]
+				cursor.execute(
+					f"""SELECT * FROM tasks 
+					WHERE {constraint} = ? AND admin = ?
+					ORDER BY created_at DESC 
+					LIMIT ? OFFSET ?""",
+					(keyword, admin, limit, offset)
+				)
+				rows = cursor.fetchall()
 
-			cursor.execute("SELECT * FROM tasks WHERE admin = ? ORDER BY created_at DESC LIMIT ? OFFSET ?", (admin, limit, offset))
-			rows = cursor.fetchall()
+				tasks = [{
+					'id': row[0], 
+					'status': row[1], 
+					'admin':row[2],
+					'action_count':row[3],
+					'message':row[4],
+					'type':row[5],
+					'config':row[6],
+					'created_at': row[8]
+				} for row in rows]
+			else:
 
-			tasks = [{
-				'id': row[0], 
-				'status': row[1], 
-				'admin':row[2],
-				'action_count':row[3],
-				'message':row[4],
-				'type':row[5],
-				'config':row[6],
-				'created_at': row[8]} for row in rows]
+				cursor.execute("SELECT COUNT(*) FROM tasks WHERE admin = ?", (admin,))
+				total_tasks = cursor.fetchone()[0]
+
+				cursor.execute("SELECT * FROM tasks WHERE admin = ? ORDER BY created_at DESC LIMIT ? OFFSET ?", (admin, limit, offset))
+				rows = cursor.fetchall()
+
+				tasks = [{
+					'id': row[0], 
+					'status': row[1], 
+					'admin':row[2],
+					'action_count':row[3],
+					'message':row[4],
+					'type':row[5],
+					'config':row[6],
+					'created_at': row[8]} for row in rows]
 
 		except Exception as error:
 			success, tasks = False, str(error)

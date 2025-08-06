@@ -28,7 +28,8 @@ const updateClient = (data) => {
             action_btn.classList.add(`tags`);
 
             const action_link = document.createElement('a');
-            action_link.setAttribute('href',`/${task.type}?action=get-items&item=${task.id}&key=task_id`);
+            const taskType = task.type === 'users' ? 'creators' : task.type;
+            action_link.setAttribute('href',`/${taskType}?action=get-items&item=${task.id}&key=task_id`);
             action_link.classList.add('bg-primary','light');
             
             const action_icon = document.createElement('i');

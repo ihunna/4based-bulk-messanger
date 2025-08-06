@@ -744,6 +744,15 @@ select[multiple]::-webkit-scrollbar-thumb {
     min-width: fit-content;
 }
 
+#messages-tasks-table-body .table-row{
+    background: var(--secondary);
+    border-top: 1px solid var(--soft-text);
+}
+
+#messages-tasks-table-body .table-cell{
+    color: var(--soft-text);
+}
+
 .table-header .table-cell {
     color: var(--soft-white);
     cursor: default;
@@ -1372,7 +1381,7 @@ select[multiple]::-webkit-scrollbar-thumb {
 
 .main-container > .main-content > .navbar > ul{
     display: grid;
-    grid-template-columns: repeat(7,1fr);
+    grid-template-columns: repeat(8,1fr);
     min-width: fit-content;
     align-items: center;
     justify-items: center;
@@ -1601,12 +1610,11 @@ section.creator > .details > .stats > ul > li > span{
 .main-content > 
 .content > 
 section.creator > .details > .stats > ul > li > div{
-   border-radius: 50%;
-   height: 18px;
-   width: 18px;
-   text-align: center;
+   border-radius: 5px;
+   width: fit-content;
    font-size: 14px;
    font-weight: 600;
+   padding: 2px 5px;
 }
 
 .main-container > 
@@ -1630,6 +1638,19 @@ section.creator > .settings > .toggles{
     margin:auto;
     width: 100%;
     max-height: fit-content;
+}
+
+section.creator > .settings > form{
+    width: 100%;
+    margin: 16px auto;
+}
+
+section.creator > .settings > form > input{
+    border:1px solid #03ab8c;
+    outline: none;
+    background: var(--secondary);
+    color: var(--soft-white);
+    padding: 2px;
 }
 
 .main-container > .main-content > .content > section > .item-holder{
