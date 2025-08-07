@@ -1,89 +1,73 @@
 {
-    "_id": "68832bcccf1b0035d70b2a2c",
-    "code": "noft7hbuyuxq9eym",
-    "type": "image/jpeg",
-    "dominantColor": [
-        188,
-        171,
-        159
+    "user_ids": [
+        "6894f97e91f8959c610c357f",
+        "6682e25e782f928fe201f2f8"
     ],
-    "width": 1440,
-    "height": 1800,
-    "categories": [
-        "image",
-        "media"
-    ],
-    "extension": "jpeg",
-    "description": "Ich habe ein brennendes Verlangen danach, richtig genossen zu werden. Meine Brüste schreien förmlich nach dir. Was reagierst du darauf? 🔥",
-    "crop": {
-        "x1": 0,
-        "y1": 60,
-        "x2": 1440,
-        "y2": 1860
-    },
-    "private": false,
-    "tag": [],
-    "user_id": "6682e25e782f928fe201f2f8",
-    "price": 0,
-    "status": "available",
-    "vault_file_stack_id": "67dc54582175fb497b0ffb73",
-    "status_controlled": "ok",
-    "status_media_controlled": "ok",
-    "fileStackType": "image",
-    "is_subscription_item": false,
-    "media_language": "de",
-    "created_at": "2025-08-01 14:00:00",
-    "views_count": 4,
-    "like_user_ids": [],
-    "likes_count": 1,
-    "filesystem_added": true,
-    "user": {
-        "_id": "6682e25e782f928fe201f2f8",
-        "name": "jenny.ried",
-        "locale": "en",
-        "following_count": 7,
-        "content_language": "en",
-        "verified": true,
-        "allow_partnership": true,
-        "follower_count": 292,
-        "file_stack_count": 1000,
-        "file_stack_individual_sale_item_count": 990,
-        "file_stack_subscription_item_count": 10,
-        "file_stack_subscription_item_image_count": 7,
-        "file_stack_subscription_item_video_count": 3,
-        "media_language": "de",
-        "likes_count": 3002,
-        "cold_communication_status": "actively_not_contactable",
-        "private": true,
-        "allow_search_engine_indexing": true,
-        "creator": true,
-        "has_subscription_configuration": true,
-        "subscribed_user_ids": null,
-        "subscriber_user_ids": null,
-        "avatar": {
-            "_id": "67dd2ad5cb1daf29190c4b02",
-            "code": "natmn4rhs4zoh6td",
-            "status": "available",
-            "categories": [
-                "avatar"
-            ],
-            "type": "image/jpeg",
-            "fileStackType": "image",
-            "user_id": "6682e25e782f928fe201f2f8",
-            "extension": "jpeg",
-            "width": 523,
-            "height": 522,
-            "dominantColor": [
-                137,
-                131,
-                119
-            ],
-            "status_media_controlled": "ok",
-            "status_controlled": "ok",
-            "filesystem_added": true
+    "user_key": "6682e25e782f928fe201f2f8:6894f97e91f8959c610c357f",
+    "updated_at": "2025-08-07 21:01:06",
+    "created_at": "2025-08-07 21:01:06",
+    "_id": "68951412ce0cb9a6890d695a",
+    "users": [
+        {
+            "_id": "6894f97e91f8959c610c357f",
+            "name": "amadocarillo",
+            "ext_id": "6894d5c22a024c229504dedc",
+            "locale": "en",
+            "cold_communication_status": "passively_contactable",
+            "ext_id_created_at": "2025-08-07 19:07:42",
+            "following_count": 2,
+            "has_subscription_configuration": false,
+            "subscribed_user_ids": [],
+            "subscriber_user_ids": [],
+            "avatar": null,
+            "follow_user_ids": []
         },
-        "follow_user_ids": []
-    },
-    "collection": [],
-    "first_three_comments": []
+        {
+            "_id": "6682e25e782f928fe201f2f8",
+            "name": "jenny.ried",
+            "locale": "en",
+            "following_count": 7,
+            "content_language": "en",
+            "verified": true,
+            "allow_partnership": true,
+            "follower_count": 291,
+            "file_stack_count": 1005,
+            "file_stack_individual_sale_item_count": 995,
+            "file_stack_subscription_item_count": 10,
+            "file_stack_subscription_item_image_count": 7,
+            "file_stack_subscription_item_video_count": 3,
+            "media_language": "de",
+            "likes_count": 3004,
+            "cold_communication_status": "actively_not_contactable",
+            "private": true,
+            "allow_search_engine_indexing": true,
+            "has_subscription_configuration": true,
+            "subscribed_user_ids": [],
+            "subscriber_user_ids": [],
+            "avatar": {
+                "_id": "67dd2ad5cb1daf29190c4b02",
+                "code": "natmn4rhs4zoh6td",
+                "status": "available",
+                "categories": [
+                    "avatar"
+                ],
+                "type": "image/jpeg",
+                "fileStackType": "image",
+                "user_id": "6682e25e782f928fe201f2f8",
+                "extension": "jpeg",
+                "width": 523,
+                "height": 522,
+                "dominantColor": [
+                    137,
+                    131,
+                    119
+                ],
+                "status_media_controlled": "ok",
+                "status_controlled": "ok",
+                "filesystem_added": true,
+                "own": true
+            },
+            "follow_user_ids": []
+        }
+    ]
 }
