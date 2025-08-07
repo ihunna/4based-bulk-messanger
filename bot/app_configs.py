@@ -56,11 +56,11 @@ if not os.path.exists(logs_file):
 load_dotenv(env_path)
 session_key = os.getenv('SECRET_KEY')
 server_key = os.getenv('SERVER_KEY')
+host = os.getenv('HOST')
 
 # Configure application
 app = Flask(__name__)
 app.debug = True
-host = 'http://127.0.0.1:5000'
 CORS(app,origins=host)
 socketio = SocketIO(app)
 
