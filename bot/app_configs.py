@@ -38,6 +38,19 @@ universal_files = {
     'captions':os.path.join(universal_folder,'captions.txt')
 }
 
+# Ensure folders and files exist
+os.makedirs(configs_folder, exist_ok=True)
+os.makedirs(universal_folder, exist_ok=True)
+
+for file_path in universal_files.values():
+    if not os.path.exists(file_path):
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write('')
+
+if not os.path.exists(logs_file):
+    with open(logs_file, 'w', encoding='utf-8') as f:
+        f.write('')
+
 
 # loading environment variables
 load_dotenv(env_path)
