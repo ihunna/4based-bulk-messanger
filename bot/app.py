@@ -288,7 +288,7 @@ def creator():
             return render_template(
                 'creator.html',
                 creator_id = creator_id,
-                post_id = creator['post_id'],
+                post_id = creator.get('post_id'),
                 creator=creator['details']['user'],
                 reuse_ip=reuse_ip)
         
@@ -431,6 +431,9 @@ def messages():
 def handle_messages():
     try:
         admin = session['USER']['id']
+
+        #check if proxies is empty
+        if len(Utils.load_proxies()) < 1:return jsonify({'msg': f'Proxies must not be empty'}), 400
 
         #check for already running task
         success, tasks,_ = Utils.get_tasks(admin=admin, constraint='type', keyword='messages')

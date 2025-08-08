@@ -201,7 +201,7 @@ class Creator:
 			)
 			if not success:raise Exception(creator)
 
-
+			if len(scrapers) < 1:raise ValueError('You must supply accounts for scraping')
 			target_scraper = random.choice(scrapers)
 			success,scraper = self.login(
 				admin,
@@ -215,9 +215,11 @@ class Creator:
 			if caption_source == 'creator':
 				captions_file = os.path.join(configs_folder,creator_internal_id,'captions.txt')
 				if not isfile(captions_file):raise Exception(f'Captions file does not exist for {creator_name}')
-				captions = []
+				
 				with open(captions_file,'r',encoding='utf-8') as f:
-					caption = random.choice([line.strip() for line in f.readlines()])
+					captions = [line.strip() for line in f.readlines()]
+					if len(captions) < 1: raise ValueError('Captions can not be empty')
+					caption = random.choice(captions)
 
 			if (not 'headers' in creator.keys() or len(creator.get('headers',{})) < 1) or (not 'cookies' in creator.keys() or len(creator.get('cookies',{})) < 1):
 				return False,f'User {creator_name} does not have session data'
