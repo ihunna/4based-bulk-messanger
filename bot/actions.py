@@ -251,6 +251,7 @@ class Creator:
 					raise Exception(f'User {user["name"]} already has a chat with {creator_name}')
 				elif response.status_code == 409:
 					Utils.write_log(f'User {user["name"]} already has a chat with {creator_name}, skipping...')
+					continue
 				message_id = response.json().get('_id', None)
 				message_key = response.json().get('user_key', None)
 
