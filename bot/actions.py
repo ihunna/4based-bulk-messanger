@@ -46,7 +46,8 @@ class Creator:
 				f'https://rest.4based.com/api/1.0/file-stack/{post_id}',
 				params=params,
 				headers=self.headers,
-				proxies=random.choice(self.proxies)
+				proxies=random.choice(self.proxies),
+				timeout=60
 			)
 			if not response.ok:
 				raise Exception(f'Error fetching media ID for {post_id}: {response.text}')
@@ -88,7 +89,8 @@ class Creator:
 
 			response = session.post(
 				f'https://rest.4based.com/api/1.0/user/{creator_id}/file-stack/',
-				json=json_data
+				json=json_data,
+				timeout=60
 			)
 
 			if not response.ok:
@@ -122,7 +124,8 @@ class Creator:
 
 			response = session.get(
 				'https://rest.4based.com/api/1.0/user', 
-				params=params)
+				params=params,
+				timeout=60)
 
 			if response.ok:
 				users = response.json()
@@ -192,14 +195,16 @@ class Creator:
 			is_paid = False if config.get('cost_type','free') == 'free' else True
 			price = config.get('price',0)
 
-			success,creator = self.login(
+			success,_creator = self.login(
 				admin,
 				email,
 				password,
 				reuse_ip=creator.get('reuse_ip',True),
 				task_id=task_id
 			)
-			if not success:raise Exception(creator)
+			if not success:raise Exception(_creator)
+
+			creator = _creator
 
 			if len(scrapers) < 1:raise ValueError('You must supply accounts for scraping')
 			target_scraper = random.choice(scrapers)
@@ -238,7 +243,8 @@ class Creator:
 			for user in users:
 				# create a chat ID for the user
 				response = session.post(
-				    f'https://rest.4based.com/api/1.0/user/{creator_id}/chat/user/{user["_id"]}'
+				    f'https://rest.4based.com/api/1.0/user/{creator_id}/chat/user/{user["_id"]}',
+					timeout=60
 				)
 
 				if not response.ok and response.status_code != 409:
@@ -272,7 +278,8 @@ class Creator:
 
 				response = session.post(
 					f'https://rest.4based.com/api/1.0/user/{creator_id}/chat/{message_id}/message',
-					json=json_data
+					json=json_data,
+					timeout=60
 				)
 
 				if not response.ok:
@@ -343,18 +350,19 @@ class Creator:
 					'with_user_pivot_interaction': 'true',
 				}
 
-				response = requests.get(
-					f"https://rest.4based.com/api/1.0/user/name/{user['details']['user']['name']}",
-					params=params,
-					headers=user.get('headers',{}),
-					cookies=user.get('cookies',{}),
-					proxies=proxies
-				)
+			response = requests.get(
+				f"https://rest.4based.com/api/1.0/user/name/{user['details']['user']['name']}",
+				params=params,
+				headers=user.get('headers',{}),
+				cookies=user.get('cookies',{}),
+				proxies=proxies,
+				timeout=60
+			)
 
-				if response.status_code == 200:
-					user['id'] = creator_id
-					user['status'] = 'Online'
-					return True, user
+			if response.status_code == 200:
+				user['id'] = creator_id
+				user['status'] = 'Online'
+				return True, user
 				
 			json_data = {
 				'identifier': email,
@@ -373,7 +381,8 @@ class Creator:
 
 			response = session.post(
 				'https://rest.4based.com/api/1.0/auth/login',  
-				json=json_data
+				json=json_data,
+				timeout=60
 			)
 
 			if response.status_code == 400:
